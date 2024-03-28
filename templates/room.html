@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="message-box">
+    <h2>Chat Room: {{room}}</h2>
+    <!-- An empty div where we're going to inject all of the messages from our
+    socket server.  -->
+    <div class="messages" id="messages"></div>
+    <div class="inputs">
+        <!-- Input box where we'll type our messages. -->
+        <input type="text" rows="3" placeholder="Message" name="message" id="message" />
+        <!-- Send button to send our message. -->
+        <button type="button" name="send" id="send-btn" onClick="sendMessage()">
+            Send
+        </button>
+    </div>
+</div>
+<!-- JavaScript so the page updates w/ chat messages w/o needing to refresh page.-->
+<script type="text/javascript">
+    // Connect you to the socket associated with the server the website is on.
+    var socketio = io();
+    // Once you connect, this triggers an event called "connect".  So, we'll want
+    // to listen for the event, and then put the user in the correct room.
+    // See main.py for the connect() function.
+
+    const sendMessage = () => {
+        console.log("send");
+    }
+</script>
+
+{% endblock %}

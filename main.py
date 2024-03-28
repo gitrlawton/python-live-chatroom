@@ -98,5 +98,50 @@ def room():
     # Otherwise, redirect them to the room page.
     return render_template("room.html")
 
+# Decorator using the socketio instance we initialized at the top.
+# Function to handle user joining a room.
+@socketio.on("connect")
+def connect(auth):
+    # Look in the session for the user's room and the user's name.
+    room = session.get("room")
+    name = session.get("name")
+    # Check to make sure they have a name and a room to avoid errors.
+    # They don't have one or the other, do nothing.
+    if not room or not name:
+        return
+    # If they have a room but its not a valid room number, make them leave it.
+    if room not in rooms:
+        # Built-in Socketio method.
+        leave_room(room)
+        return
+    
+    # At this point, their name and room are valid.
+    # Built-in Socketio method.
+    join_room(room)
+    # Send a json message to everyone in the room that a user joined.
+    # Built-in Socketio method.
+    send({"name": name, "message": "has entered the room."}, to=room)
+    # Increase room user count by 1.
+    rooms[room]["members"] += 1
+
+# Function to handle user leaving room.
+@socketio.on("disconnect")
+def disconnect():
+    room = session.get("room")
+    name = session.get("name")
+    leave_room(room)
+    
+    if room in rooms:
+        # Decrease room members count by 1.
+        rooms[room]["members"] -= 1
+        # If there are no users left in the room, delete the room.  This way
+        # we're not storing empty rooms.
+        if rooms[room]["members"] <= 0:
+            del rooms[room]
+    # Send message to everyone in the room that a user left.        
+    send({"name": name, "message": "has left the room."}, to=room)
+    
+    
+
 if __name__ == "__main__":
     socketio.run(app, debug=True)
