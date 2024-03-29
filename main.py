@@ -9,7 +9,7 @@ app = Flask(__name__)
 
 app.config["SECRET_KEY"] = "ourkey"
 # Initialize the socketio server.
-socketio = SocketIO(app)
+socketio = SocketIO(app, logger=True, engineio_logger=True)
 
 # Dictionary to hold our list of existing rooms.
 rooms = {}
@@ -59,7 +59,7 @@ def home():
             # values for name and code back to the template so the user doesn't
             # need to type them again.
             return render_template("home.html", error="Please enter a room code.", code=code, name=name)
-        
+        room = code
         # At this point, the user provided a name and entered a room code.
         # Hence, figure out what room they want to join.
         # !room = code!
@@ -95,8 +95,31 @@ def room():
     if room is None or session.get("name") is None or room not in rooms:
         # Keep redirecting them to the home page.
         return redirect(url_for("home"))
-    # Otherwise, redirect them to the room page.
-    return render_template("room.html")
+    # Otherwise, redirect them to the room page. Pass the room code and the list
+    # of messages in the room already.
+    return render_template("room.html", code=room, messages=rooms[room]["messages"])
+
+# Here on the server, handle the message and retransmit it to everyone in the
+# chat room.
+@socketio.on("message")
+def message(data):
+    # Find out the room the user sent the message from.
+    room = session.get("room")
+    # If user is sending a message from a room that is not valid, do nothing.
+    if room not in rooms:
+        return
+    # Otherwise, the message we want to retransmit will contain the sender's
+    # name and their message.
+    content = {
+        "name": session.get("name"),
+        "message": data["data"]
+    }
+    # Send message we just constructed.
+    send(content, to=room)
+    # Add the message to the list of messages in the room.
+    rooms[room]["messages"].append(content)
+    # Console log for debugging.
+    print(f"{session.get('name')} said: {data['data']}")
 
 # Decorator using the socketio instance we initialized at the top.
 # Function to handle user joining a room.

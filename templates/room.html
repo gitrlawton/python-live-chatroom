@@ -2,7 +2,7 @@
 {% block content %}
 
 <div class="message-box">
-    <h2>Chat Room: {{room}}</h2>
+    <h2>Chat Room: {{code}}</h2>
     <!-- An empty div where we're going to inject all of the messages from our
     socket server.  -->
     <div class="messages" id="messages"></div>
@@ -23,9 +23,63 @@
     // to listen for the event, and then put the user in the correct room.
     // See main.py for the connect() function.
 
+
+
+    // Get the div where we want to insert new messages.
+    const messages = document.getElementById("messages")
+
+    // Function that creates the message.  Pass it a name and the message.
+    const createMessage = (name, msg) => {
+        // The HTML equivalent of a message that we want to add to the 
+        // messages div.
+        const content = `
+        <div class="text">
+            <span>
+                <strong>${name}</strong>: ${msg}    
+            </span>
+            <span class="muted">
+                ${new Date().toLocaleString()}
+            </span>    
+        </div>
+        `;
+        // Add the message we just constructed to the 'messages' div.
+        messages.innerHTML += content;
+    };
+
+    // Listening for a 'message' event which was sent from our python flask
+    // socket server.  It will contain data.  Data will have whatever we sent
+    // in the message (ie. a name and a message.)  Pass those to the function.
+    socketio.on("message", (data) => {
+        createMessage(data.name, data.message)
+    })
+
+    // Function to handle sending messages.  This function sends the message to 
+    // the server (from there, we'll need to have the server send it to everyone 
+    // in the chat room.  See def message() in main.py)
     const sendMessage = () => {
-        console.log("send");
+        // Get the message the user sent.
+        const message = document.getElementById("message")
+        // If it is an empty message, do nothing.
+        if (message.value == "") 
+            return
+        // Otherwise, trigger a 'message' event.  Pass a payload of json 
+        // containing data, which holds whatever is in the message's text input.
+        socketio.emit("message", {data: message.value });
+        // Clear whatever we typed.
+        message.value = "";
     }
 </script>
+
+<!-- Create a jinja for loop.  For each message, create a script tag and call
+the createMessage function, passing it the message sender and the message. This
+block needs to be below the above script tag, because that one defines the 
+function createMessage() that we're using here, and it needs to be defined first.
+Also, msg.name and msg.message are not string data types, they're raw data, so I
+need to stringify them by wraping their values in quotes. -->
+{% for msg in messages %}
+<script type="text/javascript">
+    createMessage("{{msg.name}}", "{{msg.message}}");
+</script>
+{% endfor %}
 
 {% endblock %}
